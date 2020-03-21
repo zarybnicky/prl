@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ -e /usr/local/share/OpenMPI ]; then
+    PREFIX="--prefix /usr/local/share/OpenMPI"
+fi
+
+mpicc ${PREFIX:-} -o hello hello.c
+mpirun ${PREFIX:-} -np "$1" hello
+rm -f hello
