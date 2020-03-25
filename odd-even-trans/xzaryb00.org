@@ -1,6 +1,9 @@
-#+TITLE: Implementace algoritmu "Odd-even transposition sort"
+#+TITLE: Implementace algoritmu "Odd-even\nbsp{}transposition\nbsp{}sort"
+#+DATE: 25. března 2020
 #+AUTHOR: Jakub Zárybnický
 #+OPTIONS: toc:nil
+#+LATEX_HEADER: \usepackage{minted}
+#+LATEX_HEADER: \usepackage[margin=1in]{geometry}
 
 * Algoritmus
 Algoritmus pracuje s lineárně propojenou sadou procesorů, pro uspořádání N
@@ -9,34 +12,84 @@ algoritmu.
 
 Pokud se v jednom kroku přesune jedna hodnota nejvýše o jeden procesor doleva či
 doprava, potřebujeme právě N kroků pro seřazení opačně uspořádané sekvence -
-tj. pro přesunutí nejmenší hodnoty např. z pravého konce doleva.
-
-Pokud počítáme s kroky algoritmu "distribute", "sort" a "collect":
+tj. pro přesunutí nejmenší hodnoty např. z pravého konce doleva. Pokud nazveme
+jednotlivé kroky algoritmu "distribute", "sort" a "collect", pak
 1) "distribute" je v odevzdané implementaci $O(n)$, odesíláme hodnoty po
    jedné. Při využití sdílené paměti by ale krok "distribute" mohl mít $O(1)$,
-   kdy každý procesor by si načetl svou hodnotu z paměti v jednom kroku.
+   kdy každý procesor by si načetl svou hodnotu z paměti v jednom kroku;
 2) "sort" je jádro algoritmu. Za použití lineární topologie a $N$ procesorů pro
    $N$ hodnot je nutný počet kroků lineární, $O(N)$, za předpokladu opačně
-   seřazené sekvence.
+   seřazené sekvence;
 3) "collect" má stejně jako "distribute" časovou složitost $O(n)$, nejlevější
    procesor přijímá hodnoty po jedné. Za použití sdílené paměti by ale
-   složitost mohla být $O(1)$
+   složitost mohla být $O(1)$.
 
-Celková časová složitost je lineární, $t(n) = O(n)$.
+Celková časová složitost je tedy lineární, $t(n) = O(n)$. Celková prostorová
+složitost je také lineární, n procesorů (s jedním paměťovým slotem), $p(n) =
+O(n) = O(n)$. Celková cena algoritmu je ale $c(n) = t(n) * p(n) = O(n^2)$,
+kdežto optimální složitost pro algoritmus paralelního řazení je $O(log n)$.
 
-Celková prostorová složitost je také lineární, n procesorů s jedním paměťovým
-slotem. $p(n) = O(n * 1) = O(n)$.
+* Implementace
+FIXME
 
-Celková cena algoritmu je ale $c(n) = t(n) * p(n) = O(n^2)$, kdežto optimální
-složitost pro algoritmus paralelního řazení je $O(log n)$.
 
 * Experimenty
-Experimenty s různě velkými vstupy pro ověření časové složitosti (očekává se
-graf, nikoliv tabulka), nikoliv měření počtu kroků algoritmu.
+# (org-babel-do-load-languages 'org-babel-load-languages '((emacs-lisp . t) (python . t) (jupyter . t)))
+#+BEGIN_SRC jupyter-python :session py :exports results :results raw drawer
+  import csv
+  from collections import defaultdict
+  import matplotlib.pyplot as plt
+  import numpy as np
+
+  def load_file(name):
+      grouped = defaultdict(list)
+      xs, ys = [], []
+      with open(name) as csvfile:
+          for row in csv.reader(csvfile, delimiter=','):
+              grouped[row[0]].append(float(row[3]))
+              xs.append(float(row[0]))
+              ys.append(float(row[3]))
+      return grouped, np.array(xs), np.array(ys)
+
+  fig, ax = plt.subplots(2)
+
+  merlin, mx, my = load_file('bench-merlin.csv')
+  mm, mb = np.polyfit(mx, my, 1)
+  ax[0].boxplot(x=list(merlin.values()), labels=list(merlin.keys()))
+  ax[0].plot(mx, mm * mx + mb)
+  ax[0].set_xlabel('N, Merlin')
+  ax[0].set_ylabel('User time (s)')
+
+  nixos, nx, ny = load_file('bench-nixos.csv')
+  nm, nb = np.polyfit(nx, ny, 1)
+  ax[1].boxplot(x=list(nixos.values()), labels=list(nixos.keys()))
+  ax[1].plot(nx, nm * nx + nb)
+  ax[1].set_xlabel('N, NixOS (with oversubscribe)')
+  ax[1].set_ylabel('User time (s)')
+
+  fig.set_figwidth(8)
+  fig.set_figheight(8)
+  plt.tight_layout()
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+[[file:./.ob-jupyter/b50e9814c3ecfcf5690b299e7f379efb9f146834.png]]
+
+Experimenty byly provedeny pomocí shell skriptu, ve kterém bylo pro N z
+intervalu od 1 do 26, resp. 27 pro Merlina, provedeno deset měření pomocí
+příkazu ~time~ (~/usr/bin/time~, ne vestavěný příkaz terminálu). Pro každé měření
+byla vygenerována nová sada N vstupních hodnot spuštěn program pomocí ~mpirun~,
+měřena byla celková doba běhu příkazu ~mpirun~. Výstupem tohoto skriptu byl CSV
+soubor s jednotlivými naměřenými hodnotami (parametr N, ~wall time~, ~user time~,
+~kernel time~).
+
+Měření jsem provedl na Merlinovi a na svém osobním počítači (za použití
+~--oversubscribe~), pro vytvoření grafu jsem použil sloupec ~user time~ a knihovnu
+~matplotlib~. Z těchto hodnot je zakreslen výše přiložený boxplot (za použití
+výchozího nastavení), včetně regresní přímky proložené získanými hodnotami.
 
 * Protokol
-Komunikační protokol, jak si "procesy" zasílají zprávy. Pro vizualizaci použijte sekvenční diagram (http://en.wikipedia.org/wiki/Sequence_diagram). Nezapomeňte, že protokol musí být obecný, tedy pro n procesů.
-
 #+begin_src plantuml :file odd-even.png
   participant "Rank0"
   participant "Rank1"
@@ -82,8 +135,14 @@ Komunikační protokol, jak si "procesy" zasílají zprávy. Pro vizualizaci pou
 [[file:odd-even.png]]
 
 * Závěr
+Z výsledného grafu experimentu je zřejmé, že lineární časová náročnost
+implementovaného algoritmu odpovídá teoretické časové složitosti. Počet hodnot
+/outliers/ naměřených na Merlinovi je sice nečekaně mnoho, předpokládám ale, že to
+bylo způsobené procesy jiných uživatelů, při dalších měřeních se stejný problém
+už neopakoval.
 
-
-Závěr, ve kterém zhodnotíte dosažené výsledky, zamyšlení, zdali experimenty
-potvrdily teoretickou složitost, případně vysvětlení, proč tato teoretická
-složitost nebyla dodržena.
+Absolutní časové hodnoty, např. 0.8s pro seřazení 27 čísel na merlinovi, jsou
+sice pro program s touto funkčností nepřijatelné - nejen algoritmus není
+optimální svou celkovou cenou jakožto algoritmus pro paralelní řazení, ale
+implementační volba OpenMPI způsobuje, že čas nutný pro komunikaci mezi procesy
+zcela převažuje času spotřebovaný pro řazení samotné.

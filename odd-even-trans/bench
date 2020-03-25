@@ -1,21 +1,30 @@
 #!/usr/bin/env bash
 
-OUT="bench.out"
-CMD="./test"
-RANGE=25
+OUT="bench-$(hostname).csv"
+RANGE=27
 ITERATIONS=10
 
+if [ -e "$OUT" ]; then
+    mv "$OUT" "$OUT~"
+fi
+
+# nixos vs merlin
+if [ -e /usr/local/share/OpenMPI ]; then
+    PREFIX="--prefix /usr/local/share/OpenMPI"
+else
+    SUB="--oversubscribe"
+fi
+mpic++ ${PREFIX:-} -o ots ots.cpp
+
 for (( N = 1; N <= "$RANGE"; N++ )); do
-    ARG="$N"
-    echo "$CMD"
+    CMD="mpirun ${PREFIX:-} ${SUB:-} -np $N ots"
     for (( I = 1; I <= "$ITERATIONS"; I++ )); do
-        PERCENT=$(( "$I" * 100 / "$ITERATIONS"))
-
-        /usr/bin/env time -f "%C,%E,%U,%S" -o "$OUT" -a "$CMD" "${ARG:-}" # > /dev/null 2>&1
+        echo -ne "$N: $I/$ITERATIONS\r"
+        dd if=/dev/random bs=1 count="$N" of=numbers 2>/dev/null
+        /usr/bin/env time -f "$N,%E,%U,%S" -o "$OUT" -a $CMD > /dev/null 2>&1
         sync && echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
-
-        l=$(seq -s "+" "$I" | sed 's/[0-9]//g')
-        echo -ne "$l ($PERCENT%) \r"
     done
     echo -ne '\n'
 done
+
+rm -f ots numbers
