@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+OUT="bench.out"
+CMD="./test"
+RANGE=25
+ITERATIONS=10
+
+for (( N = 1; N <= "$RANGE"; N++ )); do
+    ARG="$N"
+    echo "$CMD"
+    for (( I = 1; I <= "$ITERATIONS"; I++ )); do
+        PERCENT=$(( "$I" * 100 / "$ITERATIONS"))
+
+        /usr/bin/env time -f "%C,%E,%U,%S" -o "$OUT" -a "$CMD" "${ARG:-}" # > /dev/null 2>&1
+        sync && echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
+
+        l=$(seq -s "+" "$I" | sed 's/[0-9]//g')
+        echo -ne "$l ($PERCENT%) \r"
+    done
+    echo -ne '\n'
+done

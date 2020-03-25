@@ -3,13 +3,11 @@
 # nixos vs merlin
 if [ -e /usr/local/share/OpenMPI ]; then
     PREFIX="--prefix /usr/local/share/OpenMPI"
-else
-    SLOTS="--oversubscribe"
 fi
 
 N=${1:-10};
-mpic++ ${PREFIX:-} -o oets odd-even.cpp
+mpic++ ${PREFIX:-} -o ots ots.cpp
 
 dd if=/dev/random bs=1 count="$N" of=numbers 2>/dev/null
-mpirun ${PREFIX:-} "$SLOTS" -np "$N" oets
-rm -f oets numbers
+mpirun ${PREFIX:-} --oversubscribe -np "$N" ots
+rm -f ots numbers

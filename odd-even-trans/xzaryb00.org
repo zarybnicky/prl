@@ -1,0 +1,89 @@
+#+TITLE: Implementace algoritmu "Odd-even transposition sort"
+#+AUTHOR: Jakub Zárybnický
+#+OPTIONS: toc:nil
+
+* Algoritmus
+Algoritmus pracuje s lineárně propojenou sadou procesorů, pro uspořádání N
+hodnot použijeme N procesorů, kde hodnoty jsou distribuované v přípravném kroku
+algoritmu.
+
+Pokud se v jednom kroku přesune jedna hodnota nejvýše o jeden procesor doleva či
+doprava, potřebujeme právě N kroků pro seřazení opačně uspořádané sekvence -
+tj. pro přesunutí nejmenší hodnoty např. z pravého konce doleva.
+
+Pokud počítáme s kroky algoritmu "distribute", "sort" a "collect":
+1) "distribute" je v odevzdané implementaci $O(n)$, odesíláme hodnoty po
+   jedné. Při využití sdílené paměti by ale krok "distribute" mohl mít $O(1)$,
+   kdy každý procesor by si načetl svou hodnotu z paměti v jednom kroku.
+2) "sort" je jádro algoritmu. Za použití lineární topologie a $N$ procesorů pro
+   $N$ hodnot je nutný počet kroků lineární, $O(N)$, za předpokladu opačně
+   seřazené sekvence.
+3) "collect" má stejně jako "distribute" časovou složitost $O(n)$, nejlevější
+   procesor přijímá hodnoty po jedné. Za použití sdílené paměti by ale
+   složitost mohla být $O(1)$
+
+Celková časová složitost je lineární, $t(n) = O(n)$.
+
+Celková prostorová složitost je také lineární, n procesorů s jedním paměťovým
+slotem. $p(n) = O(n * 1) = O(n)$.
+
+Celková cena algoritmu je ale $c(n) = t(n) * p(n) = O(n^2)$, kdežto optimální
+složitost pro algoritmus paralelního řazení je $O(log n)$.
+
+* Experimenty
+Experimenty s různě velkými vstupy pro ověření časové složitosti (očekává se
+graf, nikoliv tabulka), nikoliv měření počtu kroků algoritmu.
+
+* Protokol
+Komunikační protokol, jak si "procesy" zasílají zprávy. Pro vizualizaci použijte sekvenční diagram (http://en.wikipedia.org/wiki/Sequence_diagram). Nezapomeňte, že protokol musí být obecný, tedy pro n procesů.
+
+#+begin_src plantuml :file odd-even.png
+  participant "Rank0"
+  participant "Rank1"
+  participant "Rank2"
+  participant "Rank..."
+  participant "Rank...."
+  participant "Rank2k-1" as 2k1
+  participant "Rank2k" as 2k
+
+  group Distribute
+  Rank0 ->> Rank1: distribute 2nd
+  Rank0 ->> Rank2: distribute 3rd
+  Rank0 ->> Rank...: distribute 4th
+  Rank0 ->> Rank....: distribute 5th
+  Rank0 ->> 2k1: distribute (2k-1)st
+  Rank0 ->> 2k: distribute (2k)th
+  end
+
+  group Sort, repeated ceil(N/2) times
+  group Even
+    Rank0 ->> Rank1: Cmp(+transpose)
+    Rank2 ->> Rank...: Cmp(+transpose)
+    Rank.... ->> 2k: Cmp(+transpose)
+  end
+  group Odd
+    Rank1 ->> Rank2: Cmp(+transpose)
+    Rank... ->> Rank....: Cmp(+transpose)
+    2k1 ->> 2k: Cmp(+transpose)
+  end
+  end
+
+  group Collect
+  Rank1 ->> Rank0: Collect
+  Rank2 ->> Rank0: Collect
+  Rank... ->> Rank0: Collect
+  Rank.... ->> Rank0: Collect
+  2k1 ->> Rank0: Collect
+  2k ->> Rank0: Collect
+  end
+#+end_src
+
+#+RESULTS:
+[[file:odd-even.png]]
+
+* Závěr
+
+
+Závěr, ve kterém zhodnotíte dosažené výsledky, zamyšlení, zdali experimenty
+potvrdily teoretickou složitost, případně vysvětlení, proč tato teoretická
+složitost nebyla dodržena.
