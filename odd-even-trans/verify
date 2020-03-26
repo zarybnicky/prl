@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+for (( N = 9; N <= 11; N++ )); do
+    echo $N
+    for ((I = 0; I <= 10; I++ )); do
+        echo $I
+        OUT=$(./test $N)
+        RESULT=$(echo "$OUT" | tail -n +2 | xargs echo)
+        SORTED=$(echo "$OUT" | tail -n +2 | sort -n | xargs echo)
+        if [ "$RESULT" != "$SORTED" ]; then
+            echo "'$RESULT' != '$SORTED'"
+        fi
+    done
+done

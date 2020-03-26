@@ -4,79 +4,74 @@
 
 using namespace std;
 
-#define TAG 0
-
-void distributeInput(void) {
-  int target = 0;
+void loadInput(int *data) {
   fstream input("numbers", ios::in);
-  while (input.peek() != EOF) {
-    int number = input.get();
-    if (target != 0) cout << " ";
-    cout << number;
-    MPI_Send(&number, 1, MPI_INT, target++, TAG, MPI_COMM_WORLD);
+  for (int i = 0; input.peek() != EOF; i++) {
+    data[i] = input.get();
+    if (i > 0) cout << " ";
+    cout << data[i];
   }
   cout << endl;
+  input.close();
+}
+
+void exchangeOnly(int *number, int rank) {
+  MPI_Status stat;
+  MPI_Send(number, 1, MPI_INT, rank + 1, 0, MPI_COMM_WORLD);
+  MPI_Recv(number, 1, MPI_INT, rank + 1, 0, MPI_COMM_WORLD, &stat);
+}
+
+void exchangeAndCompare(int *number, int rank) {
+  int neighbor[1];
+  MPI_Status stat;
+  MPI_Recv(neighbor, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, &stat);
+  if (*neighbor > *number) {
+    MPI_Send(number, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD);
+    *number = *neighbor;
+  } else {
+    MPI_Send(neighbor, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD);
+  }
 }
 
 int main(int argc, char *argv[]) {
   int numprocs;
-  int myid;
-  int neighnumber;
-  int mynumber;
-  MPI_Status stat;
+  int rank;
+  int number[1];
 
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  if (myid == 0) {
-    distributeInput();
+  // Load and distribute data
+  int *data = new int[numprocs];
+  if (rank == 0) {
+    loadInput(data);
   }
-  MPI_Recv(&mynumber, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &stat);
+  MPI_Scatter(data, 1, MPI_INT, number, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  int oddlimit = 2 * (numprocs / 2) - 1;
-  int evenlimit = 2 * ((numprocs - 1) / 2);
-
-  int cycles = 0;
-  for (int j = 1; j <= numprocs / 2; j++) {
-    cycles++;
-
-    if ((!(myid % 2) || myid == 0) && myid < oddlimit) {
-      MPI_Send(&mynumber, 1, MPI_INT, myid + 1, TAG, MPI_COMM_WORLD);
-      MPI_Recv(&mynumber, 1, MPI_INT, myid + 1, TAG, MPI_COMM_WORLD, &stat);
-    } else if (myid <= oddlimit) {
-      MPI_Recv(&neighnumber, 1, MPI_INT, myid - 1, TAG, MPI_COMM_WORLD, &stat);
-      if (neighnumber > mynumber) {
-        MPI_Send(&mynumber, 1, MPI_INT, myid - 1, TAG, MPI_COMM_WORLD);
-        mynumber = neighnumber;
+  // Actually do the sorting
+  for (int j = 0; j < numprocs; j++) {
+    if (j % 2 == 0) {
+      // Even processes do the comparing
+      if (rank % 2 == 0) {
+        if (rank > 0) exchangeAndCompare(number, rank);
       } else {
-        MPI_Send(&neighnumber, 1, MPI_INT, myid - 1, TAG, MPI_COMM_WORLD);
+        if (rank < numprocs - 1) exchangeOnly(number, rank);
       }
-    }
-
-    if (myid % 2 && myid < evenlimit) {
-      MPI_Send(&mynumber, 1, MPI_INT, myid + 1, TAG, MPI_COMM_WORLD);
-      MPI_Recv(&mynumber, 1, MPI_INT, myid + 1, TAG, MPI_COMM_WORLD, &stat);
-    } else if (myid <= evenlimit && myid != 0) {
-      MPI_Recv(&neighnumber, 1, MPI_INT, myid - 1, TAG, MPI_COMM_WORLD, &stat);
-      if (neighnumber > mynumber) {
-        MPI_Send(&mynumber, 1, MPI_INT, myid - 1, TAG, MPI_COMM_WORLD);
-        mynumber = neighnumber;
+    } else {
+      // Odd processes do the comparing
+      if (rank % 2 == 1) {
+        if (rank > 0) exchangeAndCompare(number, rank);
       } else {
-        MPI_Send(&neighnumber, 1, MPI_INT, myid - 1, TAG, MPI_COMM_WORLD);
+        if (rank < numprocs - 1) exchangeOnly(number, rank);
       }
     }
   }
 
-  // Collect results
-  if (myid == 0) {
-    cout << mynumber << endl;
-    for (int i = 1; i < numprocs; i++) {
-      MPI_Recv(&neighnumber, 1, MPI_INT, i, TAG, MPI_COMM_WORLD, &stat);
-      cout << neighnumber << endl;
-    }
-  } else {
-    MPI_Send(&mynumber, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD);
+  // Collect and print
+  MPI_Gather(number, 1, MPI_INT, data, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if (rank == 0) {
+    for (int i = 0; i < numprocs; i++) cout << data[i] << endl;
   }
 
   MPI_Finalize();

@@ -30,8 +30,17 @@ O(n) = O(n)$. Celková cena algoritmu je ale $c(n) = t(n) * p(n) = O(n^2)$,
 kdežto optimální složitost pro algoritmus paralelního řazení je $O(log n)$.
 
 * Implementace
-FIXME
+Implementovaný program také pracuje ve třech krocích, ve fázi "distribute" se
+načtou data ze souboru v procesu s rankem 0 a pomocí primitivní operace
+~MPI_Scatter~ se jednotlivé položky dostanou i k ostatním procesům.
 
+Fáze "sort" probíhá různě pro sudé/liché procesy, kdy v sudých cyklech dostanou
+sudé procesy hodnotu svého levého souseda a rozhodnou se, jestli transponovat
+nebo ne (kombinace operací ~MPI_Send~ a ~MPI_Recv~), v lichých cyklech toto
+provádějí zase procesy liché.
+
+V závěrečné fázi "collect" se pro sesbírání dat od jednotlivých procesů použije
+~MPI_Gather~, a proces s rankem 0 vypíše už uspořádaná data.
 
 * Experimenty
 # (org-babel-do-load-languages 'org-babel-load-languages '((emacs-lisp . t) (python . t) (jupyter . t)))
@@ -144,5 +153,5 @@ už neopakoval.
 Absolutní časové hodnoty, např. 0.8s pro seřazení 27 čísel na merlinovi, jsou
 sice pro program s touto funkčností nepřijatelné - nejen algoritmus není
 optimální svou celkovou cenou jakožto algoritmus pro paralelní řazení, ale
-implementační volba OpenMPI způsobuje, že čas nutný pro komunikaci mezi procesy
-zcela převažuje času spotřebovaný pro řazení samotné.
+implementační volba OpenMPI způsobuje, že čas potřebný pro režii komunikace mezi
+procesy zcela dominuje času spotřebovaný pro řazení samotné.

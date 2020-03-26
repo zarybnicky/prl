@@ -1,4 +1,4 @@
-% Created 2020-03-25 Wed 15:29
+% Created 2020-03-26 Thu 18:01
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8x]{inputenc}
@@ -31,7 +31,7 @@
 \maketitle
 
 \section{Algoritmus}
-\label{sec:orgd334b42}
+\label{sec:orgfc8b5dd}
 Algoritmus pracuje s lineárně propojenou sadou procesorů, pro uspořádání N
 hodnot použijeme N procesorů, kde hodnoty jsou distribuované v přípravném kroku
 algoritmu.
@@ -58,12 +58,21 @@ O(n) = O(n)\). Celková cena algoritmu je ale \(c(n) = t(n) * p(n) = O(n^2)\),
 kdežto optimální složitost pro algoritmus paralelního řazení je \(O(log n)\).
 
 \section{Implementace}
-\label{sec:org82630c7}
-FIXME
+\label{sec:org6243153}
+Implementovaný program také pracuje ve třech krocích, ve fázi "distribute" se
+načtou data ze souboru v procesu s rankem 0 a pomocí primitivní operace
+\texttt{MPI\_Scatter} se jednotlivé položky dostanou i k ostatním procesům.
 
+Fáze "sort" probíhá různě pro sudé/liché procesy, kdy v sudých cyklech dostanou
+sudé procesy hodnotu svého levého souseda a rozhodnou se, jestli transponovat
+nebo ne (kombinace operací \texttt{MPI\_Send} a \texttt{MPI\_Recv}), v lichých cyklech toto
+provádějí zase procesy liché.
+
+V závěrečné fázi "collect" se pro sesbírání dat od jednotlivých procesů použije
+\texttt{MPI\_Gather}, a proces s rankem 0 vypíše už uspořádaná data.
 
 \section{Experimenty}
-\label{sec:orge24a7ec}
+\label{sec:org4bcccb7}
 \begin{center}
 \includegraphics[width=.9\linewidth]{./.ob-jupyter/10773b02fdc9c6bbbe7ad2653184b22029124297.png}
 \end{center}
@@ -82,13 +91,13 @@ Měření jsem provedl na Merlinovi a na svém osobním počítači (za použit�
 výchozího nastavení), včetně regresní přímky proložené získanými hodnotami.
 
 \section{Protokol}
-\label{sec:orgf95c3f0}
+\label{sec:orgdb8d12e}
 \begin{center}
 \includegraphics[width=.9\linewidth]{odd-even.png}
 \end{center}
 
 \section{Závěr}
-\label{sec:orgb0e9da6}
+\label{sec:orgf770d37}
 Z výsledného grafu experimentu je zřejmé, že lineární časová náročnost
 implementovaného algoritmu odpovídá teoretické časové složitosti. Počet hodnot
 \emph{outliers} naměřených na Merlinovi je sice nečekaně mnoho, předpokládám ale, že to
@@ -98,6 +107,6 @@ už neopakoval.
 Absolutní časové hodnoty, např. 0.8s pro seřazení 27 čísel na merlinovi, jsou
 sice pro program s touto funkčností nepřijatelné - nejen algoritmus není
 optimální svou celkovou cenou jakožto algoritmus pro paralelní řazení, ale
-implementační volba OpenMPI způsobuje, že čas nutný pro komunikaci mezi procesy
-zcela převažuje času spotřebovaný pro řazení samotné.
+implementační volba OpenMPI způsobuje, že čas potřebný pro režii komunikace mezi
+procesy zcela dominuje času spotřebovaný pro řazení samotné.
 \end{document}
